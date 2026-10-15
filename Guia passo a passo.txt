@@ -1,0 +1,183 @@
+Aqui está o passo a passo exato, na ordem de execução, para tirar o código do Antigravity e colocar para rodar na prática.
+
+Passo 1: Criar o Banco de Dados no Supabase
+Acesse supabase.com e faça login.
+
+Clique em "New Project".
+
+Defina um nome para o projeto (ex: manychat-clone) e guarde a Database Password que você criar.
+
+Selecione a região mais próxima (South America - São Paulo).
+
+Após o projeto carregar, vá no menu lateral em Project Settings (ícone de engrenagem) > Database.
+
+Role até Connection String, selecione a aba URI e copie a URL de conexão (ela se parece com postgresql://postgres:[SUA-SENHA]@db.xxxx.supabase.co:5432/postgres).
+
+Passo 2: Criar a Instância do Redis no Upstash
+Como o projeto usa BullMQ para filas assíncronas, você precisa de um servidor Redis rodando.
+
+Acesse upstash.com e faça login.
+
+No painel, clique em "Create Database".
+
+Dê um nome (ex: instagram-queue), selecione o tipo Redis e escolha a região sa-east-1 (São Paulo).
+
+Clique em Create.
+
+Na página do banco criado, role até a seção Connect to your database e copie o Redis URL (formato: rediss://default:xxxx@xxxx.upstash.io:6379).
+
+Passo 3: Preencher as Variáveis de Ambiente (.env)
+Na raiz da sua aplicação criada pelo Antigravity, abra o arquivo .env e preencha os dados reais obtidos:
+
+Snippet de código
+PORT=3000
+
+# Conexão do Supabase (Passo 1)
+DATABASE_URL="postgresql://postgres:[SUA-SENHA]@db.xxxx.supabase.co:5432/postgres"
+
+# Conexão do Upstash (Passo 2)
+REDIS_URL="rediss://default:xxxx@xxxx.upstash.io:6379"
+
+# Chave simétrica para criptografar tokens no banco (gere uma string de 32 caracteres aleatórios)
+ENCRYPTION_KEY="sua_chave_secreta_com_32_caracteres_aqui!"
+
+# Dados que vamos pegar na Meta no Passo 5
+META_APP_SECRET=""
+META_VERIFY_TOKEN="coloque_uma_palavra_forte_aqui_ex_token_secreto_123"
+META_API_VERSION="v20.0"
+Passo 4: Rodar as Migrations do Prisma
+Com o .env configurado com a URL do Supabase, você precisa criar as tabelas no banco de dados.
+
+No terminal do projeto, execute:
+
+Bash
+npx prisma migrate dev --name init
+O Prisma vai ler o arquivo prisma/schema.prisma e gerar todas as tabelas (Organization, InstagramAccount, Contact, Flow, etc.) no Supabase.
+
+Para conferir, rode:
+
+Bash
+npx prisma studio
+Isso abrirá uma interface web no navegador mostrando suas tabelas vazias criadas com sucesso.
+
+Passo 5: Criar e Configurar o App no Meta for Developers
+Acesse developers.facebook.com e faça login com a conta dona da Página do Facebook / Instagram.
+
+Clique em "Meus Aplicativos" > "Criar aplicativo".
+
+Selecione o caso de uso "Outro" (ou "Criar presença em negócios") e avance.
+
+Escolha o tipo de aplicativo "Empresa" (Business).
+
+Defina o nome do app e informe seu e-mail de contato.
+
+Dentro do painel do app criado:
+
+Vá em Configurações do aplicativo > Básico.
+
+Copie o campo Chave Secreta do Aplicativo (App Secret).
+
+Cole esse valor no seu .env na variável META_APP_SECRET.
+
+Passo 6: Expor o Servidor Local via Túnel HTTPS (ngrok)
+A Meta não aceita http://localhost:3000. Ela exige uma URL HTTPS pública para verificar o webhook.
+
+Abra um terminal separado e instale o ngrok (caso não tenha):
+
+Bash
+npm install -g ngrok
+Inicie o túnel na porta do seu backend:
+
+Bash
+ngrok http 3000
+O terminal mostrará uma URL no campo Forwarding, como:
+[https://a1b2-c3d4.ngrok-free.app](https://a1b2-c3d4.ngrok-free.app)
+
+Deixe esse terminal aberto. Copie essa URL HTTPS.
+
+Passo 7: Iniciar o Backend
+No terminal principal do seu projeto, suba o servidor Fastify:
+
+Bash
+npm run dev
+Verifique se apareceu no console que o servidor está rodando na porta 3000 e se a conexão com o Redis e com o Prisma não deu erro.
+
+Passo 8: Cadastrar o Webhook no Painel da Meta
+No portal Meta for Developers, no menu esquerdo, clique em Adicionar produto e adicione Webhooks.
+
+Na tela de Webhooks, no dropdown superior, selecione Instagram.
+
+Clique no botão "Editar URL de retorno" (Edit Callback URL).
+
+Preencha os dois campos:
+
+URL de retorno: [https://sua-url-do-ngrok.ngrok-free.app/webhook](https://sua-url-do-ngrok.ngrok-free.app/webhook) (adicione o /webhook no final da URL do Passo 6).
+
+Verificar token: Digite exatamente o mesmo texto que você definiu em META_VERIFY_TOKEN no .env (ex: token_secreto_123).
+
+Clique em Verificar e Salvar.
+
+A Meta fará uma requisição GET instantânea ao seu servidor.
+
+Se o terminal do seu backend responder com sucesso e o ngrok acusar 200 OK, a janela fechará e o webhook estará verificado.
+
+Na lista de campos que aparecer na página de Webhooks, localize messages e messaging_postbacks e clique em "Assinar" (Subscribe) em cada um deles.
+
+Passo 9: Vincular a Conta e Gerar o Token de Acesso
+Para o bot conseguir responder mensagens, você precisa de um token com permissão da página:
+
+Vá em Ferramentas do Meta for Developers > Graph API Explorer.
+
+No canto direito:
+
+Selecione o seu Aplicativo do Facebook.
+
+No campo Usuário ou página, selecione a sua Página do Facebook conectada ao Instagram Business.
+
+Em Permissões (Permissions), adicione:
+
+instagram_basic
+
+instagram_manage_messages
+
+pages_manage_metadata
+
+pages_read_engagement
+
+Clique em Generate Access Token e autorize o acesso no popup do Facebook.
+
+Copie o token de acesso gerado.
+
+Passo 10: Inserir os Dados Iniciais no Banco via Script
+Você precisa registrar no banco a sua organização e a conta conectada com o token criptografado.
+
+Cole e execute este comando com o prompt no Antigravity:
+
+Markdown
+Crie um script em `scripts/seed-account.ts` que:
+1. Conecte ao Prisma.
+2. Crie uma Organization chamada "Minha Empresa".
+3. Criptografe o access token da Meta usando a função `encryptToken` de `src/shared/utils/crypto.ts`.
+4. Salve um registro em `InstagramAccount` com o `ig_user_id`, `page_id` e o `access_token_encrypted`.
+5. Crie um Flow de teste ativo com gatilho de palavra-chave "TESTE" e uma ação de envio de mensagem "Automação funcionando com sucesso!".
+Depois que o Antigravity criar o script, rode no terminal:
+
+Bash
+npx tsx scripts/seed-account.ts
+Passo 11: Fazer o Teste Real
+Pegue outro celular ou peça para um amigo entrar no Instagram.
+
+Abra o perfil da sua conta comercial do Instagram.
+
+Envie uma mensagem direta (DM) com a palavra:
+
+TESTE
+Olhe o terminal do seu backend:
+
+O Fastify receberá o POST /webhook e retornará 200 OK na hora.
+
+O BullMQ retirará o evento da fila.
+
+O interpretador de nós encontrará o gatilho da palavra "TESTE".
+
+O robô enviará a resposta "Automação funcionando com sucesso!" de volta no chat do Instagram.

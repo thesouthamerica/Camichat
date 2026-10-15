@@ -1,0 +1,242 @@
+// ==============================================================================
+// CAMICHAT - DATABASE SCHEMA (PostgreSQL / Prisma ORM)
+// Multi-Tenant Instagram Automation System (Manychat Clone)
+// DBA & Data Engineering Specification
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMS (PostgreSQL Native Enum Types)
+// ------------------------------------------------------------------------------
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum TriggerType {
+  KEYWORD
+  STORY_MENTION
+  STORY_REPLY
+  COMMENT_REPLY
+  DIRECT_MESSAGE
+  DEFAULT_FALLBACK
+  POSTBACK
+}
+
+enum NodeType {
+  MESSAGE
+  DELAY
+  CONDITION
+  ACTION
+  QUICK_REPLY
+  SMART_AI
+  SET_CUSTOM_FIELD
+  ADD_TAG
+  REMOVE_TAG
+}
+
+// ------------------------------------------------------------------------------
+// 1. ORGANIZATION (Multi-Tenant Root)
+// ------------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  instagramAccounts InstagramAccount[]
+  contacts          Contact[]
+  flows             Flow[]
+  flowSteps         FlowStep[]
+  conversationLogs  ConversationLog[]
+
+  @@map("organizations")
+}
+
+// ------------------------------------------------------------------------------
+// 2. INSTAGRAM ACCOUNT (Contas Conectadas da Organização)
+// ------------------------------------------------------------------------------
+
+model InstagramAccount {
+  id                   String   @id @default(uuid())
+  organizationId       String   @map("organization_id")
+  igUserId             String   @map("ig_user_id") @db.VarChar(100) // Instagram Business Account ID
+  pageId               String   @map("page_id") @db.VarChar(100)    // Facebook Page ID
+  name                 String?  @db.VarChar(255)
+  username             String?  @db.VarChar(100)
+
+  // Token criptografado em repouso com AES-256-GCM (NUNCA em texto plano)
+  accessTokenEncrypted String   @map("access_token_encrypted") @db.Text
+  accessTokenIv        String   @map("access_token_iv") @db.VarChar(64)
+  accessTokenTag       String   @map("access_token_tag") @db.VarChar(64)
+
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts         Contact[]
+  flows            Flow[]
+  conversationLogs ConversationLog[]
+
+  // Indexes & Constraints
+  @@unique([organizationId, igUserId], name: "org_ig_user_unique")
+  @@index([organizationId], name: "idx_instagram_accounts_organization_id")
+  @@index([igUserId], name: "idx_instagram_accounts_ig_user_id")
+  @@index([pageId], name: "idx_instagram_accounts_page_id")
+  @@map("instagram_accounts")
+}
+
+// ------------------------------------------------------------------------------
+// 3. CONTACT (Leads / Usuários do Instagram com LGPD)
+// ------------------------------------------------------------------------------
+
+model Contact {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  instagramAccountId String   @map("instagram_account_id")
+  igScopedId         String   @map("ig_scoped_id") @db.VarChar(100) // IGSID (Instagram Scoped ID)
+  username           String?  @db.VarChar(100)
+  name               String?  @db.VarChar(255)
+  profilePic         String?  @map("profile_pic") @db.Text
+  optOut             Boolean  @default(false) @map("opt_out") // LGPD / Conformidade de Privacidade
+  lastInteractionAt  DateTime @default(now()) @map("last_interaction_at")
+  customFields       Json     @default("{}") @map("custom_fields") // JSONB
+  tags               String[] @default([])
+
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instagramAccount InstagramAccount  @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  conversationLogs ConversationLog[]
+
+  // High-Performance Indexes for Filtering and Analytics
+  @@unique([organizationId, igScopedId], name: "org_contact_scoped_unique")
+  @@index([igScopedId], name: "idx_contacts_ig_scoped_id")
+  @@index([organizationId], name: "idx_contacts_organization_id")
+  @@index([lastInteractionAt], name: "idx_contacts_last_interaction_at")
+  @@index([organizationId, lastInteractionAt], name: "idx_contacts_org_last_interaction")
+  @@index([organizationId, optOut], name: "idx_contacts_org_opt_out")
+  @@map("contacts")
+}
+
+// ------------------------------------------------------------------------------
+// 4. FLOW (Fluxos de Automação / Grafos)
+// ------------------------------------------------------------------------------
+
+model Flow {
+  id                 String      @id @default(uuid())
+  organizationId     String      @map("organization_id")
+  instagramAccountId String?     @map("instagram_account_id") // Opcional: fluxo geral da org ou específico da conta
+  name               String      @db.VarChar(255)
+  description        String?     @db.Text
+  isActive           Boolean     @default(true) @map("is_active")
+  triggerType        TriggerType @map("trigger_type")
+  triggerConfig      Json        @default("{}") @map("trigger_config") // JSONB: keywords, regex, post_ids
+
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instagramAccount InstagramAccount? @relation(fields: [instagramAccountId], references: [id], onDelete: SetNull)
+  steps            FlowStep[]
+  conversationLogs ConversationLog[]
+
+  // Indexes
+  @@index([organizationId], name: "idx_flows_organization_id")
+  @@index([organizationId, isActive], name: "idx_flows_org_active")
+  @@index([organizationId, triggerType], name: "idx_flows_org_trigger")
+  @@map("flows")
+}
+
+// ------------------------------------------------------------------------------
+// 5. FLOW STEP (Nós / Etapas do Grafo de Automação)
+// ------------------------------------------------------------------------------
+
+model FlowStep {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  flowId         String   @map("flow_id")
+  stepKey        String   @map("step_key") @db.VarChar(100) // Identificador do nó no canvas gráfico
+  nodeType       NodeType @map("node_type")
+  payload        Json     @map("payload")                  // JSONB: texto, botões, opções de resposta rápida, delays
+  nextRoutes     Json     @default("[]") @map("next_routes") // JSONB: transições condicionais, rotas de saída e fallbacks
+
+  // Coordenadas visuais para renderização no construtor de fluxo (Canvas visual estilo Manychat)
+  positionX      Float?   @map("position_x")
+  positionY      Float?   @map("position_y")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  flow             Flow              @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  conversationLogs ConversationLog[]
+
+  // Indexes & Constraints
+  @@unique([flowId, stepKey], name: "flow_step_key_unique")
+  @@index([organizationId], name: "idx_flow_steps_organization_id")
+  @@index([flowId], name: "idx_flow_steps_flow_id")
+  @@map("flow_steps")
+}
+
+// ------------------------------------------------------------------------------
+// 6. CONVERSATION LOG (Histórico de Mensagens IN / OUT e Auditoria)
+// ------------------------------------------------------------------------------
+
+model ConversationLog {
+  id                 String           @id @default(uuid())
+  organizationId     String           @map("organization_id")
+  instagramAccountId String           @map("instagram_account_id")
+  contactId          String           @map("contact_id")
+  flowId             String?          @map("flow_id")
+  flowStepId         String?          @map("flow_step_id")
+  mid                String?          @unique @map("mid") @db.VarChar(255) // Meta Message ID
+  direction          MessageDirection
+  content            String           @db.Text
+  rawPayload         Json?            @map("raw_payload")                 // JSONB: payload bruto recebido da Meta
+  status             MessageStatus    @default(SENT)
+  errorMessage       String?          @map("error_message") @db.Text
+  timestamp          DateTime         @default(now()) @map("timestamp")
+
+  // Relations
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  contact          Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  flow             Flow?            @relation(fields: [flowId], references: [id], onDelete: SetNull)
+  flowStep         FlowStep?        @relation(fields: [flowStepId], references: [id], onDelete: SetNull)
+
+  // Indexes for Instant Search, Analytics and Timeline Queries
+  @@index([organizationId], name: "idx_conversation_logs_organization_id")
+  @@index([contactId], name: "idx_conversation_logs_contact_id")
+  @@index([instagramAccountId], name: "idx_conversation_logs_instagram_account_id")
+  @@index([organizationId, timestamp], name: "idx_conversation_logs_org_timestamp")
+  @@index([organizationId, status], name: "idx_conversation_logs_org_status")
+  @@map("conversation_logs")
+}

@@ -1,0 +1,96 @@
+# ==============================================================================
+# CAMICHAT - ARQUIVO DE GOVERNANÇA E REGRAS DE DESENVOLVIMENTO (.cursorrules)
+# Backend Manychat Clone - Automação de Instagram (Meta Graph API)
+# Stack: Node.js, Fastify, TypeScript, Prisma, BullMQ, Redis, Zod, Axios
+# ==============================================================================
+
+Você é um Engenheiro de Software Sênior especialista em Node.js, Fastify, TypeScript de alta performance e APIs da Meta (Instagram Messaging API / Graph API).
+
+Qualquer geração de código, refatoração ou extensão deste projeto DEVE obedecer estritamente às diretrizes inegociáveis abaixo:
+
+---
+
+## 1. DIRETRIZES ABSOLUTAS E INEGOCIÁVEIS (REGRAS DE OURO)
+
+1. **PROIBIDO O USO DE `any`**:
+   - O uso do tipo `any` é terminantemente vetado.
+   - Sempre utilize tipagem estrita com Zod schemas, generics ou `unknown` seguido de type guards ou `z.infer`.
+   - `tsconfig.json` opera em modo `strict: true`, com `noImplicitAny: true` e flags adicionais rigorosas.
+
+2. **WEBHOOK DESACOPLADO (ZERO REGRAS DE NEGÓCIO NO WEBHOOK)**:
+   - A rota de Webhook da Meta (`POST /api/webhooks/meta`) NUNCA deve executar regras de negócio, queries pesadas no banco de dados ou chamadas à API da Meta.
+   - O fluxo do endpoint do webhook é EXCLUSIVAMENTE:
+     1. Obter o payload raw buffer e o header `x-hub-signature-256`.
+     2. Validar a assinatura criptográfica HMAC SHA-256.
+     3. Despachar o job para a fila do BullMQ/Redis.
+     4. Responder imediatamente com HTTP 200 `{ "status": "received" }`.
+
+3. **LATÊNCIA DO WEBHOOK < 100ms**:
+   - A resposta do webhook deve retornar status HTTP 200 em **menos de 100ms**.
+   - Se a Meta não receber HTTP 200 em tempo hábil, ela inicia retentativas agressivas e pode suspender os webhooks do aplicativo. Todo o processamento real é assíncrono via Workers.
+
+4. **VALIDAÇÃO CRIPTOGRÁFICA OBRIGATÓRIA DA META (HMAC SHA-256)**:
+   - Todo payload recebido via webhook da Meta DEVE ser validado através de HMAC SHA-256 usando `crypto.timingSafeEqual` para prevenir ataques de temporização (Timing Attacks).
+   - A chave de validação é o `META_APP_SECRET`.
+   - O cálculo é feito sobre o **buffer bruto original (raw body)** da requisição, antes de qualquer parsing JSON.
+
+5. **CRIPTOFRAFIA EM REPOUSO PARA TOKENS (AES-256-GCM)**:
+   - Tokens de Acesso de Páginas (Page Access Tokens), User Tokens e segredos NUNCA devem ser armazenados em texto plano no banco de dados.
+   - Utilize obrigatoriamente criptografia simétrica autenticada **AES-256-GCM**.
+   - Cada token cifrado deve conter seu Initialization Vector (IV de 12 ou 16 bytes), o Authentication Tag (16 bytes) e o ciphertext.
+
+6. **MULTI-TENANCY OBRIGATÓRIO (ORGANIZATION_ID)**:
+   - Toda e qualquer entidade do domínio (InstagramPage, Contact, Message, Automation, Flow, Template, etc.) pertence a uma `Organization`.
+   - TODA query de leitura, escrita, atualização ou deleção no Prisma DEVE incluir obrigatoriamente o filtro por `organization_id`.
+   - É estritamente proibido realizar queries globais sem isolamento de tenant.
+
+---
+
+## 2. ARQUITETURA E ESTRUTURA DE DIRETÓRIOS
+
+O projeto segue o padrão Modular Monolith orientado a domínio:
+
+```
+src/
+├── config/              # Variáveis de ambiente validadas com Zod (env.ts)
+├── modules/             # Módulos isolados por domínio
+│   ├── webhooks/        # Ingestão do webhook Meta (validação HMAC + enqueue)
+│   ├── queues/          # Filas do BullMQ e definição de Workers
+│   ├── automations/     # Motor de execução de regras/fluxos de automação
+│   ├── instagram/       # Integração com Instagram Graph API (envio de DMs, comentários)
+│   ├── organizations/   # Gestão de tenants
+│   └── auth/            # Autenticação e gestão de acessos
+├── shared/              # Utilitários globais reutilizáveis
+│   ├── crypto/          # Criptografia AES-256-GCM e validação HMAC SHA-256
+│   ├── database/        # Instância singleton e extensões do Prisma Client
+│   ├── redis/           # Conexão ioredis para cache e BullMQ
+│   ├── errors/          # Classes de erro customizadas (AppError, UnauthorizedError)
+│   └── middlewares/     # Hooks e validações globais do Fastify
+├── app.ts               # Setup de plugins, rotas e middlewares do Fastify
+└── server.ts            # Bootstrapping e graceful shutdown
+```
+
+---
+
+## 3. PADRÕES DE CÓDIGO E CONVENÇÕES
+
+- **Fastify**:
+  - Utilize hooks nativos (`addHook`, `onRequest`, `preHandler`).
+  - Para raw body, utilize `@fastify/raw-body` com `runFirst: true` nas rotas de webhook para garantir a integridade do Buffer antes do parse.
+  - Implemente tratamento global de erros via `setErrorHandler`.
+
+- **BullMQ & Redis**:
+  - Nomes de filas padronizados com prefixo e versão (ex: `meta-events-v1`).
+  - Configuração de retries com backoff exponencial (`backoff: { type: 'exponential', delay: 2000 }`).
+  - Remoção automática de jobs completados para evitar vazamento de memória no Redis (`removeOnComplete: { count: 1000 }`).
+
+- **Zod**:
+  - Todo input externo (body, query, params, env vars) DEVE ser tipado e validado via Zod.
+  - Tipos TypeScript devem ser inferidos diretamente de schemas Zod (`export type Input = z.infer<typeof schema>`).
+
+- **Axios & Graph API**:
+  - Clientes HTTP devem possuir timeouts explícitos (máximo 8s) e lidar adequadamente com limites de taxa (Rate Limits da Meta - Header `x-business-use-case-usage`).
+
+- **Tratamento de Exceções**:
+  - Não silencie erros (`catch (e) {}` vazio é proibido).
+  - Sempre registre logs estruturados contendo `requestId`, `organizationId` e detalhes do erro.
