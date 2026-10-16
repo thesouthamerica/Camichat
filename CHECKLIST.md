@@ -15,6 +15,8 @@
 - [x] **Etapa 9**: Inserir Dados Iniciais via Seed - **✅ CONCLUÍDO**
 - [x] **Etapa 10**: O Teste Real ao Vivo 🎯 - **✅ CONCLUÍDO (VALIDADO COM SUCESSO)**
 - [x] **Etapa 11**: Interface Visual & Flow Builder (Clone Manychat) - **✅ CONCLUÍDO (VALIDADO NO NAVEGADOR)**
+- [x] **Etapa 12**: Mídias Reais do Instagram, Foto de Perfil & Engine de Comentários - **✅ CONCLUÍDO**
+- [ ] **Etapa 13**: Automação Post-to-DM em Tempo Real (Comentário ➔ Resposta no Direct) - **🔄 EM ANDAMENTO (Ponto de Parada)**
 
 ---
 
@@ -117,3 +119,37 @@
   - Inputs de texto da DM e botão com contador de caracteres.
   - Mockup do Instagram Direct do iPhone atualizado reativamente em tempo real conforme o usuário digita.
 - [x] Testado e validado end-to-end no navegador.
+
+---
+
+## 📌 Etapa 12: Mídias Reais, Perfil & Engine de Comentários - ✅ CONCLUÍDO
+- [x] **Busca de Mídias Reais:** Integrado `GET /api/instagram/media` consultando `https://graph.instagram.com/v26.0/me/media`, permitindo escolher qualquer foto/reel real publicado na conta.
+- [x] **Foto de Perfil Real:** Busca automática da imagem de perfil de `@leonardo.bezerra.dev` via endpoint `me?fields=profile_picture_url`, aplicada tanto no cabeçalho quanto no avatar do mockup do celular.
+- [x] **Live Preview Dinâmico de Link:** O campo de URL (`https://ecoedu.online/`) agora atualiza em tempo real o botão de destino no simulador do celular.
+- [x] **Persistência do Fluxo no Supabase:** Corrigido mapeamento do tipo de gatilho para o enum Prisma (`COMMENT_REPLY`), salvando perfeitamente a automação *"Automacao Ecoedu Live"* vinculada ao post *"Aniversário do meu véi! Te amo pai, muitos anos de vida!"* (`postId: 17912239566538050`).
+- [x] **Engine Worker & Instagram Client:**
+  - Adicionado processamento de eventos do webhook com `field === 'comments'` (`processCommentEvent`).
+  - Implementado envio de mensagem privada em resposta ao comentário via `sendCommentPrivateReply` usando `recipient: { comment_id }` com fallback para `recipient: { id }`.
+  - Tratamento de palavras-chave (`quero`, `link`, `preço`, etc.) e verificação de vínculo com o post específico.
+
+---
+
+## 📌 Etapa 13: Automação Post-to-DM em Tempo Real - 🔄 EM ANDAMENTO (Ponto de Parada)
+> **Status:** O usuário criou a automação para a foto do aniversário e comentou `"Quero"` usando o perfil `@ordemdosjustos`, porém a mensagem na DM ainda não foi entregue.
+
+### 🔍 Diagnóstico Realizado:
+1. **Ausência de Webhook Inicial:** Nos logs do Fastify, nenhuma requisição HTTP da Meta atingiu a rota `/webhook` no momento do comentário.
+2. **Subscrição no App Instagram:** Identificado que a conta na Meta estava inscrita com `subscribed_fields: ['messages']`. Executada chamada na Graph API para registrar `POST /me/subscribed_apps?subscribed_fields=messages,comments` com retorno `{ success: true }`.
+3. **Segundo Teste:** Mesmo com a subscrição da conta atualizada, o evento ainda não disparou o envio da DM.
+
+### 🎯 Gancho para Retomada (Roteiro de Ações Prioritárias):
+- [ ] **1. Inscrição do Webhook no Meta Developer Portal (Nível de App):**
+  - Acessar `https://developers.facebook.com/apps/2124960758104637/webhooks/`
+  - Selecionar o tópico **Instagram** e checar se o campo **`comments`** está explicitamente inscrito/assinado no painel da Meta.
+- [ ] **2. Permissões do Token de Acesso (Scopes):**
+  - Verificar se o token atual possui as permissões `instagram_manage_comments` / `instagram_business_manage_comments`. Sem essas permissões, a Meta pode suprimir a entrega de eventos de comentários.
+- [ ] **3. Papéis do Aplicativo (App Roles / Modo de Desenvolvimento):**
+  - Como o aplicativo está em modo de desenvolvimento, verificar se a conta comentadora (`@ordemdosjustos`) precisa de confirmação de papel de Testadora aceita no Meta Developer Portal para que a Meta autorize a entrega de webhooks de comentários entre essas duas contas.
+- [ ] **4. Teste de Simulação via Script:**
+  - Disparar um payload mock de comentário para `http://localhost:3000/webhook` com assinatura HMAC simulada para testar o processamento do worker, conferir o log de execução e validar o disparo direto da DM via Graph API.
+

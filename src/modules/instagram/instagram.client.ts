@@ -135,6 +135,32 @@ export class InstagramClient {
   }
 
   /**
+   * Envia uma resposta privada (Private Reply via Direct) para um comentário em post do Instagram.
+   * Utiliza recipient.comment_id oficial da Meta Graph API para vincular diretamente à postagem.
+   */
+  async sendCommentPrivateReply(
+    commentId: string,
+    recipientId: string,
+    text: string,
+    accessToken: string
+  ): Promise<SendMessageResponse> {
+    try {
+      // 1. Tenta envio com recipient.comment_id (padrão oficial para comentários da Meta)
+      const payload = {
+        recipient: { comment_id: commentId },
+        message: { text },
+      };
+      return await this.postWithRetry<SendMessageResponse>('/me/messages', payload, accessToken);
+    } catch (err: any) {
+      console.warn(
+        `[InstagramClient] Falha com comment_id (${err.message}). Tentando fallback com recipient.id ${recipientId}...`
+      );
+      // 2. Fallback com recipient.id
+      return await this.sendTextMessage(recipientId, text, accessToken);
+    }
+  }
+
+  /**
    * Envia uma mensagem com botões de resposta rápida (Quick Replies).
    */
   async sendQuickReplies(

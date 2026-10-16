@@ -86,8 +86,8 @@ export class FlowExecutor {
     let initialStepKey = params.initialStepKey;
 
     for (const flow of flows) {
-      // Gatilho do tipo KEYWORD
-      if (flow.triggerType === 'KEYWORD') {
+      // Gatilho do tipo KEYWORD, COMMENT ou COMMENT_REPLY (comentário de publicação ou direct)
+      if (flow.triggerType === 'KEYWORD' || flow.triggerType === 'COMMENT_REPLY' || (flow.triggerType as string) === 'COMMENT') {
         const config = (flow.triggerConfig ?? {}) as unknown as KeywordTriggerConfig;
         const matches = evaluateKeywordTrigger(userInput, config);
         if (matches) {

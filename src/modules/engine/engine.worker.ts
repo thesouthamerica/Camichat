@@ -7,6 +7,11 @@ import {
 import { prisma } from '@/shared/database/prisma.js';
 import { decryptToken } from '@/shared/utils/crypto.js';
 import { flowExecutor } from './flow-executor.js';
+import { instagramClient } from '@/modules/instagram/instagram.client.js';
+import {
+  evaluateKeywordTrigger,
+  KeywordTriggerConfig,
+} from './nodes/keyword-trigger.node.js';
 
 // ==============================================================================
 // TIPOS DO PAYLOAD DA META GRAPH API
@@ -85,6 +90,8 @@ export function createEngineWorker(): Worker<InstagramWebhookJobData> {
             console.log(`[EngineWorker] Change event (${change.field}):`, JSON.stringify(change.value, null, 2));
             if (change.field === 'messages' && change.value) {
               await processMessagingEvent(entry.id, change.value);
+            } else if (change.field === 'comments' && change.value) {
+              await processCommentEvent(entry.id, change.value);
             }
           }
         }
@@ -269,3 +276,200 @@ async function processMessagingEvent(
     accessToken,
   });
 }
+
+interface MetaWebhookCommentEvent {
+  id: string; // ID do comentário
+  text?: string;
+  from?: {
+    id: string; // IGSID
+    username?: string;
+  };
+  media?: {
+    id: string; // ID do post/reel
+    media_product_type?: string;
+  };
+  parent_id?: string;
+}
+
+/**
+ * Processa comentários feitos em publicações ou reels do Instagram.
+ * Dispara automaticamente a resposta privada via Direct (Private Reply) vinculada ao post.
+ */
+async function processCommentEvent(
+  entryId: string,
+  comment: MetaWebhookCommentEvent
+): Promise<void> {
+  const commentId = comment.id;
+  const commentText = comment.text?.trim() || '';
+  const igScopedId = comment.from?.id;
+  const username = comment.from?.username;
+  const mediaId = comment.media?.id;
+
+  console.log(
+    `[EngineWorker] Processando comentário no post ${mediaId} de @${username} (${igScopedId}): "${commentText}"`
+  );
+
+  if (!igScopedId || !commentId || !commentText) {
+    console.warn('[EngineWorker] Comentário ignorado: campos essenciais ausentes.');
+    return;
+  }
+
+  // 1. Localiza a conta do Instagram ativa
+  let account = await prisma.instagramAccount.findFirst({
+    where: {
+      OR: [{ igUserId: entryId }, { pageId: entryId }],
+      isActive: true,
+    },
+  });
+
+  if (!account) {
+    account = await prisma.instagramAccount.findFirst({ where: { isActive: true } });
+  }
+
+  if (!account) {
+    console.warn('[EngineWorker] Nenhuma conta ativa encontrada para comentário.');
+    return;
+  }
+
+  const organizationId = account.organizationId;
+
+  // 2. Localiza ou cria o Contato
+  let contact = await prisma.contact.findUnique({
+    where: {
+      org_contact_scoped_unique: {
+        organizationId,
+        igScopedId,
+      },
+    },
+  });
+
+  if (!contact) {
+    contact = await prisma.contact.create({
+      data: {
+        organizationId,
+        instagramAccountId: account.id,
+        igScopedId,
+        username: username || `user_${igScopedId.slice(-4)}`,
+        lastInteractionAt: new Date(),
+        optOut: false,
+      },
+    });
+  } else if (username && contact.username !== username) {
+    contact = await prisma.contact.update({
+      where: { id: contact.id },
+      data: { username, lastInteractionAt: new Date() },
+    });
+  }
+
+  if (contact.optOut) {
+    console.warn(`[EngineWorker] Contato ${contact.igScopedId} possui optOut=true. Comentário ignorado.`);
+    return;
+  }
+
+  // 3. Registra o comentário recebido em conversation_logs
+  await prisma.conversationLog.create({
+    data: {
+      organizationId,
+      instagramAccountId: account.id,
+      contactId: contact.id,
+      mid: `comment_${commentId}`,
+      direction: 'IN',
+      content: `[Comentário no Post ${mediaId || ''}] ${commentText}`,
+      rawPayload: comment as unknown as import('@prisma/client').Prisma.InputJsonValue,
+      status: 'DELIVERED',
+      timestamp: new Date(),
+    },
+  });
+
+  // 4. Busca fluxos ativos compatíveis (COMMENT_REPLY ou KEYWORD)
+  const flows = await prisma.flow.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+      OR: [{ triggerType: 'COMMENT_REPLY' }, { triggerType: 'KEYWORD' }],
+    },
+    include: { steps: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  console.log(`[EngineWorker] Encontrados ${flows.length} fluxos candidatos para o comentário.`);
+
+  let matchedFlow = null;
+  for (const flow of flows) {
+    const config = (flow.triggerConfig ?? {}) as any;
+
+    // Se o fluxo é específico para um post, verifica se coincide com mediaId
+    if (config.postId && mediaId && config.postId !== mediaId) {
+      continue;
+    }
+
+    // Avalia palavras-chave no texto do comentário
+    const matches = evaluateKeywordTrigger(commentText, config as KeywordTriggerConfig);
+    if (matches) {
+      matchedFlow = flow;
+      break;
+    }
+  }
+
+  if (!matchedFlow || matchedFlow.steps.length === 0) {
+    console.log(
+      `[EngineWorker] Nenhum fluxo correspondeu ao comentário "${commentText}" no post ${mediaId}.`
+    );
+    return;
+  }
+
+  console.log(`[EngineWorker] ✅ Fluxo correspondente: "${matchedFlow.name}" (${matchedFlow.id})`);
+
+  // 5. Prepara a mensagem de resposta
+  const firstStep = matchedFlow.steps[0];
+  const payload = (firstStep.payload ?? {}) as any;
+  const dmBaseText = payload.text || 'Olá! Segue o link que você pediu:';
+  const buttons = payload.buttons || [];
+  const primaryButton = buttons[0];
+
+  let fullMessageText = dmBaseText;
+  if (primaryButton && primaryButton.payload) {
+    fullMessageText += `\n\n🔗 ${primaryButton.title}: ${primaryButton.payload}`;
+  }
+
+  // 6. Decifra token e envia resposta privada (Private Reply via Direct)
+  const accessToken = decryptToken({
+    encrypted: account.accessTokenEncrypted,
+    iv: account.accessTokenIv,
+    authTag: account.accessTokenTag,
+  });
+
+  try {
+    const sendResult = await instagramClient.sendCommentPrivateReply(
+      commentId,
+      igScopedId,
+      fullMessageText,
+      accessToken
+    );
+
+    console.log(
+      `[EngineWorker] 🚀 Resposta enviada com sucesso para comentário de ${igScopedId}:`,
+      sendResult
+    );
+
+    // 7. Registra envio em conversation_logs (OUT)
+    await prisma.conversationLog.create({
+      data: {
+        organizationId,
+        instagramAccountId: account.id,
+        contactId: contact.id,
+        flowId: matchedFlow.id,
+        flowStepId: firstStep.id,
+        mid: sendResult.message_id || `out_${Date.now()}`,
+        direction: 'OUT',
+        content: fullMessageText,
+        rawPayload: sendResult as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        status: 'DELIVERED',
+        timestamp: new Date(),
+      },
+    });
+  } catch (sendErr: any) {
+    console.error(`[EngineWorker] ❌ Erro ao enviar resposta para comentário:`, sendErr.message);
+  }
+}
+

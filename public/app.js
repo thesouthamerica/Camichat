@@ -1,4 +1,4 @@
-// Camichat - Frontend Application Logic (Manychat Clone)
+// Camichat - Frontend Application Logic (Manychat Clone with Real Instagram Media)
 document.addEventListener('DOMContentLoaded', () => {
   // Estado local da aplicação
   const state = {
@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     metrics: null,
     flows: [],
     recentContacts: [],
-    selectedPostImg: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80',
+    mediaList: [],
+    selectedPost: null,
   };
 
   // Elementos do DOM
@@ -22,8 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
     metricClicks: document.getElementById('metric-clicks'),
     metricContacts: document.getElementById('metric-contacts'),
 
-    // Listas
+    // Listas & Feeds
     flowsContainer: document.getElementById('flows-container'),
+    homePostsContainer: document.getElementById('home-posts-container'),
+    homePostsCount: document.getElementById('home-posts-count'),
+    wizardPostsGrid: document.getElementById('wizard-posts-grid'),
+    selectedPostBanner: document.getElementById('selected-post-banner'),
+    selectedPostPreviewImg: document.getElementById('selected-post-preview-img'),
+    selectedPostCaptionText: document.getElementById('selected-post-caption-text'),
+    selectedPostLink: document.getElementById('selected-post-link'),
+
+    // Inbox & Contatos
     inboxList: document.getElementById('inbox-list'),
     inboxCount: document.getElementById('inbox-count'),
     contactsTableBody: document.getElementById('contacts-table-body'),
@@ -45,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
     inputBtnUrl: document.getElementById('input-btn-url'),
     charCounter: document.getElementById('char-counter'),
     btnSaveFlow: document.getElementById('btn-save-flow'),
-    postThumbs: document.querySelectorAll('.post-thumb'),
     chipBtns: document.querySelectorAll('.chip-btn'),
 
     // Live Mockup Preview
@@ -84,11 +93,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Busca as postagens reais do Instagram da conta ativa (@leonardo.bezerra.dev)
+  async function loadInstagramMedia() {
+    try {
+      const response = await fetch('/api/instagram/media');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar posts do Instagram');
+      }
+      const data = await response.json();
+      state.mediaList = data.media || [];
+      
+      renderHomePostsFeed();
+      renderWizardPostsGrid();
+    } catch (err) {
+      console.error('Erro ao carregar mídia do Instagram:', err);
+      if (elements.homePostsContainer) {
+        elements.homePostsContainer.innerHTML = `
+          <div style="padding: 16px; color: var(--text-muted); font-size: 13px;">
+            Não foi possível carregar as postagens no momento. Verifique a permissão do app.
+          </div>
+        `;
+      }
+      if (elements.wizardPostsGrid) {
+        elements.wizardPostsGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; padding: 16px; color: var(--text-muted); font-size: 13px;">
+            Nenhuma publicação carregada.
+          </div>
+        `;
+      }
+    }
+  }
+
   function renderHeaderAndMetrics() {
     if (state.account) {
-      elements.accountName.textContent = state.account.name || 'Camila Tavares | Unhas';
-      elements.accountUsername.textContent = `@${state.account.username || 'unhasbycamis'}`;
-      elements.previewUsername.textContent = state.account.username || 'unhasbycamis';
+      elements.accountName.textContent = state.account.name || 'Leonardo Bezerra';
+      elements.accountUsername.textContent = `@${state.account.username || 'leonardo.bezerra.dev'}`;
+      elements.previewUsername.textContent = state.account.username || 'leonardo.bezerra.dev';
+
+      // Atualiza com a imagem de perfil real do Instagram
+      if (state.account.profilePictureUrl) {
+        if (elements.accountAvatar) elements.accountAvatar.src = state.account.profilePictureUrl;
+        if (elements.previewAvatar) elements.previewAvatar.src = state.account.profilePictureUrl;
+        if (elements.previewAvatarBubble) elements.previewAvatarBubble.src = state.account.profilePictureUrl;
+      }
     }
 
     if (state.metrics) {
@@ -98,13 +145,141 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ==========================================
+  // 2. RENDERIZAÇÃO DOS POSTS DO INSTAGRAM
+  // ==========================================
+  function renderHomePostsFeed() {
+    if (!elements.homePostsContainer) return;
+    elements.homePostsContainer.innerHTML = '';
+    elements.homePostsCount.textContent = `${state.mediaList.length} posts`;
+
+    if (state.mediaList.length === 0) {
+      elements.homePostsContainer.innerHTML = `
+        <div style="padding: 18px; color: var(--text-muted); font-size: 13px;">
+          Nenhuma publicação encontrada no perfil @${state.account?.username || 'instagram'}.
+        </div>
+      `;
+      return;
+    }
+
+    state.mediaList.forEach((post) => {
+      const card = document.createElement('div');
+      card.className = 'feed-post-card';
+
+      const imgUrl = post.thumbnail_url || post.media_url || 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80';
+      const captionText = post.caption ? post.caption : 'Sem legenda';
+      const typeLabel = post.media_type === 'VIDEO' ? '🎬 REEL' : (post.media_type === 'CAROUSEL_ALBUM' ? '📑 CARROSSEL' : '📸 FOTO');
+
+      card.innerHTML = `
+        <div class="feed-post-media-wrap">
+          <img src="${imgUrl}" alt="Post thumbnail" loading="lazy">
+          <span class="media-type-pill">${typeLabel}</span>
+        </div>
+        <div class="feed-post-content">
+          <p class="feed-post-caption ${!post.caption ? 'empty' : ''}" title="${captionText}">${captionText}</p>
+          <div class="feed-post-footer">
+            <button class="btn-create-for-post" data-id="${post.id}">
+              Criar Automação ⚡
+            </button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('.btn-create-for-post').addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectPostAndOpenWizard(post);
+      });
+
+      elements.homePostsContainer.appendChild(card);
+    });
+  }
+
+  function renderWizardPostsGrid() {
+    if (!elements.wizardPostsGrid) return;
+    elements.wizardPostsGrid.innerHTML = '';
+
+    if (state.mediaList.length === 0) {
+      elements.wizardPostsGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 18px; color: var(--text-muted); font-size: 13px;">
+          Nenhuma publicação encontrada para seleção.
+        </div>
+      `;
+      return;
+    }
+
+    state.mediaList.forEach((post, index) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'wizard-post-thumb';
+      thumb.dataset.id = post.id;
+
+      const imgUrl = post.thumbnail_url || post.media_url;
+      const typeLabel = post.media_type === 'VIDEO' ? 'REEL' : (post.media_type === 'CAROUSEL_ALBUM' ? 'ALBUM' : 'FOTO');
+
+      thumb.innerHTML = `
+        <img src="${imgUrl}" alt="Post" loading="lazy">
+        <span class="post-type-tag">${typeLabel}</span>
+        <span class="check-circle">✓</span>
+      `;
+
+      // Seleciona o primeiro post por padrão se nenhum estiver selecionado
+      if ((!state.selectedPost && index === 0) || (state.selectedPost && state.selectedPost.id === post.id)) {
+        thumb.classList.add('active');
+        setSelectedPost(post);
+      }
+
+      thumb.addEventListener('click', () => {
+        document.querySelectorAll('.wizard-post-thumb').forEach((t) => t.classList.remove('active'));
+        thumb.classList.add('active');
+        setSelectedPost(post);
+      });
+
+      elements.wizardPostsGrid.appendChild(thumb);
+    });
+  }
+
+  function setSelectedPost(post) {
+    state.selectedPost = post;
+
+    if (elements.selectedPostBanner) {
+      elements.selectedPostBanner.style.display = 'flex';
+      const imgUrl = post.thumbnail_url || post.media_url;
+      elements.selectedPostPreviewImg.src = imgUrl;
+      elements.selectedPostCaptionText.textContent = post.caption || 'Publicação sem legenda';
+      elements.selectedPostLink.href = post.permalink || '#';
+    }
+
+    // Se o usuário ainda não personalizou o nome do fluxo, sugere um baseado no post
+    if (elements.inputFlowName && elements.inputFlowName.value.startsWith('Autoenviar links') || elements.inputFlowName.value.startsWith('Automação:')) {
+      const shortCaption = post.caption ? post.caption.slice(0, 32).trim() : 'Publicação';
+      elements.inputFlowName.value = `Automação: ${shortCaption}`;
+    }
+  }
+
+  function selectPostAndOpenWizard(post) {
+    setSelectedPost(post);
+    // Atualiza marcação visual na grade
+    document.querySelectorAll('.wizard-post-thumb').forEach((thumb) => {
+      if (thumb.dataset.id === post.id) {
+        thumb.classList.add('active');
+      } else {
+        thumb.classList.remove('active');
+      }
+    });
+
+    switchTab('tab-builder');
+    showToast(`Post selecionado! Configure as palavras-chave e a mensagem.`);
+  }
+
+  // ==========================================
+  // 3. FLUXOS E DASHBOARD
+  // ==========================================
   function renderFlows() {
     elements.flowsContainer.innerHTML = '';
 
     if (state.flows.length === 0) {
       elements.flowsContainer.innerHTML = `
         <div class="empty-state" style="padding: 24px; color: var(--text-muted); font-size: 14px;">
-          Nenhuma automação criada ainda. Clique em "Crie do zero" para começar!
+          Nenhuma automação criada ainda. Escolha um post acima para começar!
         </div>
       `;
       return;
@@ -118,13 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeClass = isActive ? 'active' : 'inactive';
       const badgeText = isActive ? 'ATIVO(A)' : 'INATIVO(A)';
 
-      // Extrai texto e botão da mensagem
-      const firstStep = flow.steps && flow.steps[0];
-      const payload = firstStep ? firstStep.payload : {};
-      const buttonTitle = payload.buttons && payload.buttons[0] ? payload.buttons[0].title : null;
-
-      // Pega imagem thumbnail padrão
-      const thumbImg = 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80';
+      // Pega imagem do post associado ou fallback
+      const config = flow.triggerConfig || {};
+      const thumbImg = config.mediaUrl || 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80';
 
       card.innerHTML = `
         <div class="flow-card-top">
@@ -155,7 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Eventos dos botões do card
       card.querySelector('.btn-toggle-flow').addEventListener('click', (e) => {
         e.stopPropagation();
         toggleFlowStatus(flow.id);
@@ -166,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteFlow(flow.id);
       });
 
-      // Ao clicar no card, carrega no formulário para inspeção
       card.addEventListener('click', () => {
         populateFormFromFlow(flow);
         switchTab('tab-builder');
@@ -215,35 +384,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // 2. LIVE MOCKUP 2-WAY REACTIVE BINDING
+  // 4. LIVE MOCKUP 2-WAY REACTIVE BINDING
   // ==========================================
   function updateLivePreview() {
-    // Texto da DM
-    const text = elements.inputDmText.value || 'Oie! Link dos esmaltes lindos pra você usar!';
+    const text = elements.inputDmText.value || 'Oie! O link do conteúdo está aqui!';
     elements.previewOutgoingText.innerHTML = text.replace(/\n/g, '<br>');
     elements.charCounter.textContent = text.length;
 
-    // Botão
     const btnTitle = elements.inputBtnTitle.value.trim();
+    const btnUrl = elements.inputBtnUrl.value.trim();
+
     if (btnTitle) {
       elements.previewActionBtn.style.display = 'block';
       elements.previewBtnLabel.textContent = btnTitle;
+      elements.previewActionBtn.href = btnUrl || '#';
+      elements.previewActionBtn.target = '_blank';
+      elements.previewActionBtn.title = btnUrl || '';
     } else {
       elements.previewActionBtn.style.display = 'none';
     }
 
-    // Palavras-chave no Lead (simula a primeira palavra digitada)
     const rawKeywords = elements.inputKeywords.value.split(',');
     const firstKeyword = rawKeywords[0] ? rawKeywords[0].trim() : 'Quero o link!';
     elements.previewLeadText.textContent = firstKeyword || 'Quero o link! 😍';
   }
 
-  // Listeners de digitação em tempo real
   elements.inputDmText.addEventListener('input', updateLivePreview);
   elements.inputBtnTitle.addEventListener('input', updateLivePreview);
+  elements.inputBtnUrl.addEventListener('input', updateLivePreview);
   elements.inputKeywords.addEventListener('input', updateLivePreview);
 
-  // Chips de palavras-chave rápidas (Preço, Link, Comprar, Esmaltes)
   elements.chipBtns.forEach((chip) => {
     chip.addEventListener('click', () => {
       const word = chip.dataset.word;
@@ -255,17 +425,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Seleção de fotos dos posts (esmaltes)
-  elements.postThumbs.forEach((thumb) => {
-    thumb.addEventListener('click', () => {
-      elements.postThumbs.forEach((t) => t.classList.remove('active'));
-      thumb.classList.add('active');
-      state.selectedPostImg = thumb.dataset.img;
-    });
-  });
-
   // ==========================================
-  // 3. NAVEGAÇÃO ENTRE ABAS
+  // 5. NAVEGAÇÃO ENTRE ABAS
   // ==========================================
   function switchTab(tabId) {
     elements.tabPanes.forEach((pane) => pane.classList.remove('active'));
@@ -314,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.inputFlowName.value = 'Resposta Automática no Direct';
         elements.inputKeywords.value = 'Preço, Quanto custa, Valor';
       } else {
-        elements.inputFlowName.value = 'Autoenviar links dos esmaltes';
+        elements.inputFlowName.value = 'Autoenviar links de comentários';
         elements.inputKeywords.value = 'Quero, eu quero, quero link, querop, link, preço';
       }
       updateLivePreview();
@@ -325,12 +486,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (elements.btnRefresh) {
     elements.btnRefresh.addEventListener('click', () => {
       loadDashboardData();
-      showToast('Dados atualizados com sucesso!');
+      loadInstagramMedia();
+      showToast('Dados e postagens atualizados com sucesso!');
     });
   }
 
   // ==========================================
-  // 4. CRIAÇÃO DE FLUXO (POST /api/flows)
+  // 6. CRIAÇÃO DE FLUXO (POST /api/flows)
   // ==========================================
   elements.btnSaveFlow.addEventListener('click', async () => {
     const name = elements.inputFlowName.value.trim();
@@ -362,17 +524,23 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.btnSaveFlow.innerHTML = `<span>Ativando...</span>`;
 
     try {
+      const payload = {
+        name,
+        triggerType: 'COMMENT_REPLY',
+        keywords,
+        dmText,
+        buttonTitle: buttonTitle || undefined,
+        buttonUrl: buttonUrl || undefined,
+        postId: state.selectedPost?.id || undefined,
+        mediaUrl: state.selectedPost?.thumbnail_url || state.selectedPost?.media_url || undefined,
+        permalink: state.selectedPost?.permalink || undefined,
+        caption: state.selectedPost?.caption || undefined,
+      };
+
       const response = await fetch('/api/flows', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          triggerType: 'COMMENT',
-          keywords,
-          dmText,
-          buttonTitle: buttonTitle || undefined,
-          buttonUrl: buttonUrl || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -380,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(errorData.error || 'Erro ao criar fluxo');
       }
 
-      showToast('✨ Automação ativada com sucesso!');
+      showToast('✨ Automação ativada com sucesso para o post selecionado!');
       await loadDashboardData();
       switchTab('tab-home');
     } catch (err) {
@@ -396,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================
-  // 5. ATIVAÇÃO / DESATIVAÇÃO E EXCLUSÃO
+  // 7. ATIVAÇÃO / DESATIVAÇÃO E EXCLUSÃO
   // ==========================================
   async function toggleFlowStatus(flowId) {
     try {
@@ -431,6 +599,11 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.inputKeywords.value = config.keywords.join(', ');
     }
 
+    if (config.postId && state.mediaList) {
+      const post = state.mediaList.find((p) => p.id === config.postId);
+      if (post) setSelectedPost(post);
+    }
+
     const firstStep = flow.steps && flow.steps[0];
     if (firstStep && firstStep.payload) {
       elements.inputDmText.value = firstStep.payload.text || '';
@@ -443,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // 6. HELPER TOAST
+  // 8. HELPER TOAST
   // ==========================================
   let toastTimer = null;
   function showToast(msg) {
@@ -458,4 +631,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicialização
   updateLivePreview();
   loadDashboardData();
+  loadInstagramMedia();
 });

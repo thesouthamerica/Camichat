@@ -56,6 +56,17 @@
           </div>
         </div>
 
+        <!-- Seção: Suas Publicações Recentes no Instagram (Graph API ao Vivo) -->
+        <div class="section-block">
+          <div class="section-header">
+            <h3>Suas publicações no Instagram</h3>
+            <span class="badge-count" id="home-posts-count">0 posts</span>
+          </div>
+          <div class="posts-feed-carousel" id="home-posts-container">
+            <div class="loading-shimmer">Carregando publicações do perfil...</div>
+          </div>
+        </div>
+
         <!-- Seção: Últimas Automações -->
         <div class="section-block">
           <div class="section-header">
@@ -143,23 +154,18 @@
                   <strong>Uma publicação ou Reels específico</strong>
                 </label>
                 
-                <!-- Grade de Posts Selecionáveis -->
-                <div class="posts-selection-grid">
-                  <div class="post-thumb active" data-img="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80">
-                    <img src="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80" alt="Post 1">
-                    <span class="check-icon">✓</span>
-                  </div>
-                  <div class="post-thumb" data-img="https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=300&q=80">
-                    <img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=300&q=80" alt="Post 2">
-                    <span class="check-icon">✓</span>
-                  </div>
-                  <div class="post-thumb" data-img="https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=300&q=80">
-                    <img src="https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=300&q=80" alt="Post 3">
-                    <span class="check-icon">✓</span>
-                  </div>
-                  <div class="post-thumb" data-img="https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=300&q=80">
-                    <img src="https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=300&q=80" alt="Post 4">
-                    <span class="check-icon">✓</span>
+                <!-- Grade de Posts Selecionáveis Dinâmica do Perfil Real -->
+                <div class="posts-selection-grid" id="wizard-posts-grid">
+                  <div class="loading-shimmer" style="grid-column: 1 / -1; padding: 24px; text-align: center;">Carregando publicações do perfil...</div>
+                </div>
+
+                <!-- Info do Post Selecionado -->
+                <div class="selected-post-banner" id="selected-post-banner" style="display: none;">
+                  <img id="selected-post-preview-img" src="" alt="Thumbnail">
+                  <div class="selected-post-details">
+                    <span class="selected-badge">POST SELECIONADO</span>
+                    <p id="selected-post-caption-text"></p>
+                    <a id="selected-post-link" href="#" target="_blank" rel="noopener">Ver no Instagram ↗</a>
                   </div>
                 </div>
               </div>
