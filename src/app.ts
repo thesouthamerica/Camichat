@@ -2,8 +2,15 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rawBody from 'fastify-raw-body';
 import { ZodError } from 'zod';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fastifyStatic from '@fastify/static';
 import { webhookRoutes } from './modules/webhooks/webhooks.routes.js';
+import { apiRoutes } from './modules/api/api.routes.js';
 import { AppError } from './shared/errors/app-error.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function buildApp() {
   const app = Fastify({
@@ -26,6 +33,12 @@ export async function buildApp() {
     routes: ['/webhook'],
   });
 
+  // Servir arquivos estáticos da interface visual Manychat-style
+  await app.register(fastifyStatic, {
+    root: path.join(__dirname, '../public'),
+    prefix: '/',
+  });
+
   // Healthcheck endpoint
   app.get('/health', async () => {
     return {
@@ -37,6 +50,9 @@ export async function buildApp() {
 
   // Register Webhook routes (POST /webhook, GET /webhook)
   await app.register(webhookRoutes);
+
+  // Register API routes for Dashboard and Flow Builder
+  await app.register(apiRoutes);
 
   // Global Error Handler
   app.setErrorHandler((error, _request, reply) => {

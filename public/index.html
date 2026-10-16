@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camichat - Automação Inteligente para Instagram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- Container Principal -->
+  <div class="app-layout">
+    
+    <!-- Topo / Header com Perfil -->
+    <header class="app-header">
+      <div class="profile-badge">
+        <div class="avatar-ring">
+          <img id="account-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Avatar Perfil">
+        </div>
+        <div class="profile-info">
+          <h2 id="account-name">Camila Tavares | Unhas</h2>
+          <span class="account-handle" id="account-username">@unhasbycamis</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="status-pill live-pill"><span class="pulse-dot"></span> Ao Vivo</span>
+        <button class="icon-btn" id="btn-refresh" title="Atualizar Dados">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Conteúdo Dinâmico das Abas -->
+    <main class="app-main">
+      
+      <!-- ABA 1: INÍCIO (DASHBOARD) -->
+      <section id="tab-home" class="tab-pane active">
+        <!-- Banner de Métricas Rápidas -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <span class="metric-label">Envios</span>
+            <span class="metric-val" id="metric-sends">0</span>
+            <span class="metric-sub">DMs entregues</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Cliques</span>
+            <span class="metric-val" id="metric-clicks">0</span>
+            <span class="metric-sub">Em links e botões</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Leads</span>
+            <span class="metric-val" id="metric-contacts">0</span>
+            <span class="metric-sub">Contatos ativos</span>
+          </div>
+        </div>
+
+        <!-- Seção: Últimas Automações -->
+        <div class="section-block">
+          <div class="section-header">
+            <h3>Últimas automações</h3>
+            <a href="#" class="link-more" id="link-view-all-flows">Visualizar tudo &gt;</a>
+          </div>
+
+          <div class="flows-scroll-list" id="flows-container">
+            <!-- Carregado dinamicamente via JS -->
+            <div class="loading-shimmer">Carregando automações...</div>
+          </div>
+        </div>
+
+        <!-- Seção: Crie do Zero -->
+        <div class="section-block">
+          <div class="section-header">
+            <h3>Crie do zero</h3>
+            <a href="#" class="link-more" id="link-create-wizard">Novo fluxo &gt;</a>
+          </div>
+          <div class="templates-grid">
+            <div class="template-card trigger-create-flow" data-type="COMMENT">
+              <span class="badge-popular">POPULAR</span>
+              <h4>Comentários</h4>
+              <p>Peça e-mails ou envie links a partir de um post ou reel</p>
+              <div class="template-footer">
+                <span class="ig-tag"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg> Instagram</span>
+                <span class="action-icon">💬</span>
+              </div>
+            </div>
+
+            <div class="template-card trigger-create-flow" data-type="KEYWORD">
+              <span class="badge-popular">CONVERSÃO</span>
+              <h4>Direct / Palavras-chave</h4>
+              <p>Responda na hora quando alguém enviar palavras como "preço" ou "link"</p>
+              <div class="template-footer">
+                <span class="ig-tag"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg> Instagram</span>
+                <span class="action-icon">🚀</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção: Use um modelo -->
+        <div class="section-block">
+          <div class="section-header">
+            <h3>Use um modelo</h3>
+          </div>
+          <div class="model-preview-card trigger-create-flow" data-type="COMMENT">
+            <div class="model-direct-preview">
+              <div class="chat-bubble incoming">Link pfv! 💅</div>
+              <div class="chat-bubble outgoing">
+                Oi! 🥰 Adorei saber disso!<br>
+                Detalhes dos cursos aqui:
+                <div class="fake-direct-button">🔗 Cursos VIP</div>
+              </div>
+            </div>
+            <h4>Resposta automática a todos comentários</h4>
+            <p>Envie um link para todos que comentam nos seus posts e reels</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ABA 2: CRIADOR DE AUTOMAÇÃO (WIZARD ESTILO MANYCHAT) -->
+      <section id="tab-builder" class="tab-pane">
+        <div class="builder-container">
+          
+          <!-- Coluna da Esquerda: O Formulário Step-by-Step -->
+          <div class="builder-form-pane">
+            <div class="builder-nav">
+              <button class="back-link-btn" id="btn-back-to-home">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar
+              </button>
+              <span class="view-title">Configurar Automação</span>
+            </div>
+
+            <!-- Bloco 1: Quando alguém faz um comentário / direct -->
+            <div class="wizard-box">
+              <h3 class="wizard-heading">1. Quando alguém interagir</h3>
+              
+              <div class="radio-option selected" id="opt-post">
+                <label class="radio-label">
+                  <input type="radio" name="triggerScope" value="post" checked>
+                  <span class="radio-custom"></span>
+                  <strong>Uma publicação ou Reels específico</strong>
+                </label>
+                
+                <!-- Grade de Posts Selecionáveis -->
+                <div class="posts-selection-grid">
+                  <div class="post-thumb active" data-img="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80">
+                    <img src="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=300&q=80" alt="Post 1">
+                    <span class="check-icon">✓</span>
+                  </div>
+                  <div class="post-thumb" data-img="https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=300&q=80">
+                    <img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=300&q=80" alt="Post 2">
+                    <span class="check-icon">✓</span>
+                  </div>
+                  <div class="post-thumb" data-img="https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=300&q=80">
+                    <img src="https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=300&q=80" alt="Post 3">
+                    <span class="check-icon">✓</span>
+                  </div>
+                  <div class="post-thumb" data-img="https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=300&q=80">
+                    <img src="https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=300&q=80" alt="Post 4">
+                    <span class="check-icon">✓</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="radio-option">
+                <label class="radio-label">
+                  <input type="radio" name="triggerScope" value="any">
+                  <span class="radio-custom"></span>
+                  <span>Qualquer publicação ou Direct com palavra-chave</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Bloco 2: Palavras-chave / Expressão -->
+            <div class="wizard-box">
+              <h3 class="wizard-heading">2. E essa mensagem possui</h3>
+              
+              <div class="radio-option selected">
+                <label class="radio-label">
+                  <input type="radio" name="keywordMatch" value="specific" checked>
+                  <span class="radio-custom"></span>
+                  <strong>Uma palavra ou expressão específica</strong>
+                </label>
+
+                <div class="keywords-input-wrapper">
+                  <input type="text" id="input-keywords" value="Quero, eu quero, quero link, querop, link, preço" placeholder="Digite as palavras separadas por vírgula">
+                  <span class="field-hint">Use vírgulas para separar as palavras</span>
+                  
+                  <div class="keyword-chips-sugestions">
+                    <span>Por exemplo:</span>
+                    <button type="button" class="chip-btn" data-word="Preço">Preço</button>
+                    <button type="button" class="chip-btn" data-word="Link">Link</button>
+                    <button type="button" class="chip-btn" data-word="Comprar">Comprar</button>
+                    <button type="button" class="chip-btn" data-word="Esmaltes">Esmaltes</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bloco 3: Eles receberão (Mensagem & Link) -->
+            <div class="wizard-box">
+              <h3 class="wizard-heading">3. Eles receberão</h3>
+              
+              <div class="dm-action-config">
+                <label class="field-label">Nome da Automação</label>
+                <input type="text" id="input-flow-name" class="styled-input" value="Autoenviar links dos esmaltes">
+
+                <label class="field-label">Uma DM contendo o link e texto</label>
+                <div class="textarea-container">
+                  <textarea id="input-dm-text" rows="4">Oie! Link dos esmaltes lindos pra você usar na próxima esmaltação! ✨
+
+Me segue pra mais dicas e inspirações de unhas ❤️</textarea>
+                  <span class="char-count" id="char-counter">132</span>
+                </div>
+
+                <label class="field-label">URL do Link de Destino</label>
+                <input type="url" id="input-btn-url" class="styled-input" value="https://camichat.com/esmaltes" placeholder="https://seusite.com/link">
+
+                <label class="field-label">Texto do Botão no Direct</label>
+                <input type="text" id="input-btn-title" class="styled-input" value="Link dos esmaltes 💖" placeholder="Ex: Acessar Link">
+              </div>
+            </div>
+
+            <!-- Botão Salvar e Ativar -->
+            <div class="wizard-submit-bar">
+              <button class="btn-primary-action" id="btn-save-flow">
+                <span>Ativar Automação</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Coluna da Direita: Mockup Realista de Smartphone com Live Preview -->
+          <div class="builder-preview-pane">
+            <div class="preview-header-tabs">
+              <button class="tab-pill active">DM</button>
+              <button class="tab-pill">Comentários</button>
+              <button class="tab-pill">Publicar</button>
+            </div>
+
+            <div class="phone-mockup">
+              <div class="phone-screen">
+                <!-- Status bar do iPhone -->
+                <div class="phone-status-bar">
+                  <span class="phone-time">9:50</span>
+                  <div class="phone-notch"></div>
+                  <div class="phone-icons">
+                    <svg width="16" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.66-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+                    <svg width="18" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="18" height="12" rx="2" ry="2"/><path d="M23 10v4"/></svg>
+                  </div>
+                </div>
+
+                <!-- Header do Direct do Instagram -->
+                <div class="dm-header">
+                  <span class="dm-back">&lt;</span>
+                  <div class="dm-user">
+                    <img id="preview-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Avatar">
+                    <strong id="preview-username">unhasbycamis</strong>
+                  </div>
+                  <div class="dm-actions">
+                    <span>📞</span>
+                    <span>📹</span>
+                  </div>
+                </div>
+
+                <!-- Área de Mensagens do Chat -->
+                <div class="dm-chat-body">
+                  <div class="dm-time-divider">Hoje 9:50</div>
+
+                  <!-- Mensagem do Lead simulada -->
+                  <div class="chat-message incoming">
+                    <div class="msg-bubble" id="preview-lead-text">Quero o link! 😍</div>
+                  </div>
+
+                  <!-- Resposta Automática do Camichat -->
+                  <div class="chat-message outgoing">
+                    <div class="msg-avatar">
+                      <img id="preview-avatar-bubble" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Bot">
+                    </div>
+                    <div class="bubble-stack">
+                      <div class="msg-bubble" id="preview-outgoing-text">
+                        Oie! Link dos esmaltes lindos pra você usar na próxima esmaltação! ✨<br><br>
+                        Me segue pra mais dicas e inspirações de unhas ❤️
+                      </div>
+                      <a href="#" class="ig-direct-action-btn" id="preview-action-btn">
+                        <span id="preview-btn-label">Link dos esmaltes 💖</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Input fake do direct -->
+                <div class="dm-input-fake">
+                  <div class="fake-cam-icon">📷</div>
+                  <div class="fake-input-placeholder">Mensagem...</div>
+                  <div class="fake-input-icons">🎙️ 🖼️ ➕</div>
+                </div>
+              </div>
+            </div>
+
+            <p class="preview-footnote">Visualize sua automação para garantir que está tudo do jeito que você quer.</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ABA 3: INBOX / CONVERSAS AO VIVO -->
+      <section id="tab-inbox" class="tab-pane">
+        <div class="inbox-layout">
+          <div class="section-header">
+            <h3>Inbox em Tempo Real</h3>
+            <span class="badge-count" id="inbox-count">0 conversas</span>
+          </div>
+          <div class="conversations-list" id="inbox-list">
+            <!-- Populado via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ABA 4: CONTATOS / AUDITORIA LGPD -->
+      <section id="tab-contacts" class="tab-pane">
+        <div class="contacts-layout">
+          <div class="section-header">
+            <h3>Contatos e Leads</h3>
+            <span class="badge-count" id="contacts-count">0 contatos</span>
+          </div>
+          <div class="contacts-table-wrapper">
+            <table class="contacts-table">
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>ID Instagram</th>
+                  <th>Última Interação</th>
+                  <th>Status LGPD</th>
+                </tr>
+              </thead>
+              <tbody id="contacts-table-body">
+                <!-- Populado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Barra de Navegação Inferior (Exatamente igual ao Manychat) -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="tab-home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Inicial</span>
+      </button>
+      <button class="nav-item" data-tab="tab-inbox">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Inbox</span>
+      </button>
+      <button class="nav-item" data-tab="tab-contacts">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Contatos</span>
+      </button>
+      <button class="nav-item" data-tab="tab-builder">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Automação</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- Toast de Notificações -->
+  <div id="toast" class="toast"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

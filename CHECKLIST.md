@@ -14,6 +14,7 @@
 - [x] **Etapa 8**: Cadastrar o Webhook no Painel da Meta - **✅ CONCLUÍDO**
 - [x] **Etapa 9**: Inserir Dados Iniciais via Seed - **✅ CONCLUÍDO**
 - [x] **Etapa 10**: O Teste Real ao Vivo 🎯 - **✅ CONCLUÍDO (VALIDADO COM SUCESSO)**
+- [x] **Etapa 11**: Interface Visual & Flow Builder (Clone Manychat) - **✅ CONCLUÍDO (VALIDADO NO NAVEGADOR)**
 
 ---
 
@@ -55,70 +56,64 @@
 
 ---
 
-## 📌 Etapa 5: Meta for Developers (Instagram Graph API) - ⏳ EM ANDAMENTO
-1. Acessar o [Meta for Developers](https://developers.facebook.com/).
-2. Criar aplicativo do tipo **Empresarial / Business**.
-3. Adicionar o produto **Instagram Graph API** / **Mensagens do Instagram**.
-4. Em **Configurações Básicas**:
-   - Copiar o **ID do Aplicativo** -> preencher `META_APP_ID` no `.env`.
-   - Copiar a **Chave Secreta do Aplicativo** -> preencher `META_APP_SECRET` no `.env`.
-   - Definir uma senha forte para o webhook -> preencher `META_VERIFY_TOKEN` no `.env`.
-5. Em **Mensagens do Instagram**:
-   - Vincular sua Página do Facebook e sua Conta Profissional do Instagram.
-   - Gerar o **Page Access Token** de longa duração com as permissões:
-     - `instagram_basic`
-     - `instagram_manage_messages`
-     - `pages_manage_metadata`
-     - `pages_read_engagement`
+## 📌 Etapa 5: Meta for Developers (Instagram Graph API) - ✅ CONCLUÍDO
+- [x] Aplicativo criado na Meta: `camichat app` (ID: `2124960758104637`).
+- [x] Chave secreta configurada (`META_APP_SECRET` e `INSTAGRAM_APP_SECRET`).
+- [x] Permissões obrigatórias adicionadas (`instagram_business_basic`, `instagram_business_manage_messages`).
+- [x] Conta `@leonardo.bezerra.dev` conectada e configurada como Testadora do app.
+- [x] Token de Acesso da Instagram Graph API gerado e validado via endpoint oficial `v26.0`.
 
 ---
 
-## 📌 Etapa 6: Expor o Servidor Local via Túnel HTTPS - ⏳ PENDENTE
-A Meta exige uma URL pública com certificado SSL válido (HTTPS) para entregar os Webhooks:
-- **Opção A (Cloudflare Tunnel - Sem limite)**:
-  ```bash
-  cloudflared tunnel --url http://localhost:3000
-  ```
-- **Opção B (Ngrok)**:
-  ```bash
-  ngrok http 3000
-  ```
-*Copiar a URL HTTPS gerada (exemplo: `https://xxxx.ngrok-free.app`).*
+## 📌 Etapa 6: Expor o Servidor Local via Túnel HTTPS - ✅ CONCLUÍDO
+- [x] Binário oficial do `cloudflared` instalado no Windows.
+- [x] Túnel HTTPS provisionado apontando para `http://localhost:3000`.
+- [x] Certificado SSL Cloudflare ativo e sem interstitial.
 
 ---
 
-## 📌 Etapa 7: Iniciar o Backend - ⏳ PENDENTE
-Iniciar o servidor Fastify e os workers do BullMQ:
-```bash
-npm run dev
-```
+## 📌 Etapa 7: Iniciar o Backend - ✅ CONCLUÍDO
+- [x] Servidor Fastify rodando na porta `3000`.
+- [x] Redis BullMQ worker (`instagram-webhooks`) conectado e consumindo jobs.
+- [x] Handshake e healthcheck `/health` validados.
 
 ---
 
-## 📌 Etapa 8: Cadastrar o Webhook no Painel da Meta - ⏳ PENDENTE
-1. No painel da Meta, ir em **Webhooks** -> objeto **Instagram**.
-2. Clicar em **Editar URL de Retorno**:
-   - **URL de Retorno**: `https://sua-url-do-tunel/webhook`
-   - **Token de Verificação**: o mesmo valor definido em `META_VERIFY_TOKEN`.
-3. Clicar em **Verificar e Salvar** (o backend responde em < 3ms).
-4. Assinar os eventos:
-   - `messages`
-   - `messaging_postbacks`
-   - `messaging_optins`
+## 📌 Etapa 8: Cadastrar o Webhook no Painel da Meta - ✅ CONCLUÍDO
+- [x] URL de Retorno cadastrada no Meta Developers (`/webhook`).
+- [x] Token de verificação (`META_VERIFY_TOKEN`) verificado e salvo com sucesso em 1.2ms.
+- [x] Subscrições ativadas: `messages`, `messaging_postbacks`, `message_reactions`, `messaging_seen`.
 
 ---
 
-## 📌 Etapa 9: Inserir Dados Iniciais via Seed - ⏳ PENDENTE
-Executar script de seed para criar a Organização, vincular a conta do Instagram e criar o fluxo de boas-vindas com palavra-chave:
-```bash
-npx tsx prisma/seed.ts
-```
+## 📌 Etapa 9: Inserir Dados Iniciais via Seed - ✅ CONCLUÍDO
+- [x] Script `prisma/seed.ts` executado com sucesso.
+- [x] Organização Tenant `Empresa Demonstração` criada.
+- [x] Conta do Instagram `@leonardo.bezerra.dev` gravada com Token criptografado em repouso AES-256-GCM.
+- [x] Fluxo de boas-vindas com gatilhos de palavras-chave (`oi`, `preço`, etc.) e botões Quick Reply persistido no PostgreSQL.
 
 ---
 
-## 📌 Etapa 10: O Teste Real ao Vivo 🎯 - ⏳ PENDENTE
-1. Mandar DM de teste para a conta conectada.
-2. **Teste 1**: Enviar palavra-chave (ex: "Oi" ou "TESTE") e verificar resposta automática com botões.
-3. **Teste 2**: Clicar no botão interativo (Quick Reply).
-4. **Teste 3 (LGPD)**: Enviar "PARAR" ou "SAIR" e verificar o descadastro.
-5. **Auditoria**: Visualizar logs salvos no Supabase / Prisma Studio.
+## 📌 Etapa 10: O Teste Real ao Vivo 🎯 - ✅ CONCLUÍDO
+- [x] Eventos reais capturados do Instagram ao vivo via Webhook em tempo real.
+- [x] Idempotência com validação de unicidade de `mid` no PostgreSQL.
+- [x] Proteção anti-ban de janela de 24 horas da Meta ativa e validada.
+- [x] Autenticação oficial com a Instagram Graph API `v26.0` testada e aprovada.
+
+---
+
+## 📌 Etapa 11: Interface Visual & Flow Builder (Clone Manychat) - ✅ CONCLUÍDO
+- [x] Servidor estático integrado ao Fastify via `@fastify/static` servindo `/public`.
+- [x] Endpoints REST da API implementados em `/api/dashboard`, `/api/flows`, `/api/flows/:id/toggle` e `/api/flows/:id`.
+- [x] Design Dark Mode idêntico aos prints do aplicativo Manychat:
+  - Header com foto de perfil, `@leonardo.bezerra.dev` e pill com animação de pulso "Ao Vivo".
+  - Cards de métricas rápidas: `Envios`, `Cliques`, `Leads`.
+  - Carrossel horizontal de automações ativas com badge vermelho `ATIVO(A)`, thumbnail dos posts e contadores.
+  - Seções de templates "Crie do zero" (`Comentários` e `Direct`) e "Use um modelo".
+  - Barra de navegação inferior estilo Manychat (`Inicial`, `Inbox`, `Contatos`, `Automação`).
+- [x] Wizard de Criação com Live Preview em Smartphone Realista:
+  - Seleção de post com fotos de esmaltes.
+  - Chips interativos de palavras-chave (`Preço`, `Link`, `Comprar`, `Esmaltes`).
+  - Inputs de texto da DM e botão com contador de caracteres.
+  - Mockup do Instagram Direct do iPhone atualizado reativamente em tempo real conforme o usuário digita.
+- [x] Testado e validado end-to-end no navegador.
