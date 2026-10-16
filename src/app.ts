@@ -21,7 +21,7 @@ export async function buildApp() {
   await app.register(rawBody, {
     field: 'rawBody',
     global: false,
-    encoding: 'utf8',
+    encoding: false, // Keep raw Buffer intact for exact HMAC SHA-256 calculation
     runFirst: true,
     routes: ['/webhook'],
   });

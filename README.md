@@ -1,6 +1,6 @@
 # 🚀 Camichat
 
-> **Plataforma de Automação Inteligente para Instagram (Manychat Clone)**  
+> **Plataforma de Automação Inteligente para Instagram**  
 > Motor de alta performance construído com **Node.js, Fastify, TypeScript, Prisma, BullMQ, Redis e Meta Graph API**.
 
 ---

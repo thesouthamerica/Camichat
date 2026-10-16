@@ -105,17 +105,17 @@ export class MetaRateLimitError extends MetaGraphApiError {
 // ==============================================================================
 
 export class InstagramClient {
-  private readonly http: AxiosInstance;
-  private readonly apiVersion = 'v21.0';
+  private readonly defaultApiVersion = 'v26.0';
 
-  constructor(baseURL = 'https://graph.facebook.com') {
-    this.http = axios.create({
-      baseURL: `${baseURL}/${this.apiVersion}`,
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+  /**
+   * Determina a URL base adequada com base no tipo de token (Instagram User Token vs Facebook Page Token)
+   */
+  private getBaseUrl(accessToken: string): string {
+    // Tokens iniciados em IGAA... ou IGQV... pertencem ao endpoint oficial do Instagram Graph API
+    if (accessToken.startsWith('IGAA') || accessToken.startsWith('IG')) {
+      return `https://graph.instagram.com/${this.defaultApiVersion}`;
+    }
+    return `https://graph.facebook.com/v21.0`;
   }
 
   /**
@@ -163,17 +163,21 @@ export class InstagramClient {
    * e retentativa com backoff exponencial específico para Rate Limit (Erro 4).
    */
   private async postWithRetry<T>(
-    url: string,
+    endpoint: string,
     data: Record<string, unknown>,
     accessToken: string,
     maxRetries = 3
   ): Promise<T> {
     let attempt = 0;
+    const baseUrl = this.getBaseUrl(accessToken);
+    const fullUrl = `${baseUrl}${endpoint}`;
 
     while (attempt < maxRetries) {
       try {
-        const response = await this.http.post<T>(url, data, {
+        const response = await axios.post<T>(fullUrl, data, {
+          timeout: 10000,
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
         });

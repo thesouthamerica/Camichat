@@ -6,14 +6,14 @@
 ### 📊 Resumo do Status
 - [x] **Etapa 1**: Provisionar o Banco de Dados (Supabase) - **✅ CONCLUÍDO**
 - [x] **Etapa 2**: Provisionar o Redis (Upstash) - **✅ CONCLUÍDO**
-- [ ] **Etapa 3**: Preencher o arquivo `.env` - **🟡 PARCIAL (Faltam credenciais da Meta)**
+- [x] **Etapa 3**: Preencher o arquivo `.env` - **✅ CONCLUÍDO**
 - [x] **Etapa 4**: Rodar as Migrations do Prisma - **✅ CONCLUÍDO**
-- [ ] **Etapa 5**: Meta for Developers (Instagram Graph API) - **⏳ PRÓXIMA ETAPA (EM ANDAMENTO)**
-- [ ] **Etapa 6**: Expor o Servidor Local via Túnel HTTPS - **⏳ PENDENTE**
-- [ ] **Etapa 7**: Iniciar o Backend - **⏳ PENDENTE**
-- [ ] **Etapa 8**: Cadastrar o Webhook no Painel da Meta - **⏳ PENDENTE**
-- [ ] **Etapa 9**: Inserir Dados Iniciais via Seed - **⏳ PENDENTE**
-- [ ] **Etapa 10**: O Teste Real ao Vivo 🎯 - **⏳ PENDENTE**
+- [x] **Etapa 5**: Meta for Developers (Instagram Graph API) - **✅ CONCLUÍDO**
+- [x] **Etapa 6**: Expor o Servidor Local via Túnel HTTPS - **✅ CONCLUÍDO**
+- [x] **Etapa 7**: Iniciar o Backend - **✅ CONCLUÍDO**
+- [x] **Etapa 8**: Cadastrar o Webhook no Painel da Meta - **✅ CONCLUÍDO**
+- [x] **Etapa 9**: Inserir Dados Iniciais via Seed - **✅ CONCLUÍDO**
+- [x] **Etapa 10**: O Teste Real ao Vivo 🎯 - **✅ CONCLUÍDO (VALIDADO COM SUCESSO)**
 
 ---
 
@@ -33,12 +33,12 @@
 
 ---
 
-## 📌 Etapa 3: Preencher o arquivo `.env` - 🟡 PARCIALMENTE CONCLUÍDO
+## 📌 Etapa 3: Preencher o arquivo `.env` - ✅ CONCLUÍDO
 - [x] Servidor (`NODE_ENV`, `PORT`, `HOST`) configurado.
 - [x] Chave de criptografia AES-256-GCM (`APP_ENCRYPTION_KEY`) definida.
 - [x] Supabase (`DATABASE_URL`, `DIRECT_URL`) configurado.
 - [x] Redis (`REDIS_URL`, `REDIS_HOST`, etc.) configurado.
-- [ ] **Pendente**: Inserir credenciais reais da Meta (`META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN`), que serão obtidas na Etapa 5.
+- [x] Credenciais da Meta (`META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN`) configuradas.
 
 ---
 

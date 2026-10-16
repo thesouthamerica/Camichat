@@ -11,6 +11,7 @@ const envSchema = z.object({
   // Meta App Credentials
   META_APP_ID: z.string().min(1, 'META_APP_ID is required'),
   META_APP_SECRET: z.string().min(1, 'META_APP_SECRET is required'),
+  INSTAGRAM_APP_SECRET: z.string().optional(),
   META_VERIFY_TOKEN: z.string().min(1, 'META_VERIFY_TOKEN is required'),
 
   // AES-256-GCM Key (must be 32 bytes = 64 hex characters)

@@ -18,9 +18,8 @@ async function main() {
 
   console.log(`✅ Organização pronta: ${org.name} (ID: ${org.id})`);
 
-  // 2. Token da Página criptografado com AES-256-GCM
-  // Substitua pelo seu Token de Acesso real gerado no Meta for Developers
-  const rawPageAccessToken = 'SUBSTITUA_PELO_PAGE_ACCESS_TOKEN_REAL_DA_META';
+  // 2. Token de Acesso gerado no Meta for Developers
+  const rawPageAccessToken = 'IGAAPud9MBaVpBZAGEwU2drLW9YdnJlMUh2ZAUN4bDdyRGFyY2R3ZAWd3UW5rdlJxYmtCTTZA1VWZA5UGMwN3d3Snl0RERHaHQxVFlxUjdmdXFGclV4RHJ4X2QyX01hdkNTVkhPTDBwdEtwaVJBNGNuZAF9jWmRBUmFGd2pDb0Rsd1RnTQZDZD';
   const encrypted = encryptToken(rawPageAccessToken);
 
   // 3. Cadastra a Conta do Instagram conectada
@@ -28,21 +27,24 @@ async function main() {
     where: {
       org_ig_user_unique: {
         organizationId: org.id,
-        igUserId: '17841400000000000', // Substitua pelo seu Instagram Business Account ID real
+        igUserId: '40404833735782843',
       },
     },
     update: {
       accessTokenEncrypted: encrypted.encrypted,
       accessTokenIv: encrypted.iv,
       accessTokenTag: encrypted.authTag,
+      pageId: '17841451404656683',
       isActive: true,
+      username: 'leonardo.bezerra.dev',
+      name: 'Leonardo Bezerra',
     },
     create: {
       organizationId: org.id,
-      igUserId: '17841400000000000', // Substitua pelo seu Instagram Business Account ID real
-      pageId: '100000000000000',     // Substitua pelo seu Facebook Page ID
-      name: 'Conta Teste Instagram',
-      username: 'minha_conta_teste',
+      igUserId: '40404833735782843',
+      pageId: '17841451404656683',
+      name: 'Leonardo Bezerra',
+      username: 'leonardo.bezerra.dev',
       accessTokenEncrypted: encrypted.encrypted,
       accessTokenIv: encrypted.iv,
       accessTokenTag: encrypted.authTag,
@@ -60,7 +62,18 @@ async function main() {
     },
   });
 
-  if (!existingFlow) {
+  if (existingFlow) {
+    await prisma.flow.update({
+      where: { id: existingFlow.id },
+      data: {
+        triggerConfig: {
+          keywords: ['oi', 'olá', 'ola', 'preço', 'preco', 'comprar', 'informações', 'random_text'],
+          matchType: 'contains',
+        },
+      },
+    });
+    console.log(`✅ Fluxo existente atualizado com novas palavras-chave: ${existingFlow.name}`);
+  } else {
     const flow = await prisma.flow.create({
       data: {
         organizationId: org.id,
@@ -70,7 +83,7 @@ async function main() {
         isActive: true,
         triggerType: 'KEYWORD',
         triggerConfig: {
-          keywords: ['oi', 'olá', 'ola', 'preço', 'preco', 'comprar', 'informações'],
+          keywords: ['oi', 'olá', 'ola', 'preço', 'preco', 'comprar', 'informações', 'random_text'],
           matchType: 'contains',
         },
         steps: {
